@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>주문관리 — 초록상점 관리자</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<style>
+  :root{
+    --forest: #26402C;
+    --forest-deep: #172A1C;
+    --clay: #B5502E;
+    --clay-soft: #F3E3DA;
+    --sage: #8A9A6E;
+    --ink: #1E1B16;
+    --ink-soft: #666A5C;
+    --line: #E4E6DA;
+    --bg-soft: #FAFBF6;
+    --white: #FFFFFF;
+    --amber: #B98A2E;
+    --amber-soft: #F5EAD3;
+    --blue: #34597A;
+    --blue-soft: #DEE8EE;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:'Pretendard', sans-serif; color:var(--ink);
+    background:#FFFFFF; font-size:14px; line-height:1.5;
+  }
+  a{color:inherit; text-decoration:none;}
+  button{font-family:inherit; cursor:pointer;}
+
+  /* ---------- Layout ---------- */
+  .app{ display:flex; min-height:100vh; }
+
+  .sidebar{
+    width:230px; flex-shrink:0; background:var(--forest-deep); color:rgba(255,255,255,.82);
+    padding:26px 0; display:flex; flex-direction:column;
+  }
+  .sidebar .logo{
+    font-size:18px; font-weight:700; color:var(--white); padding:0 24px 26px;
+    border-bottom:1px solid rgba(255,255,255,.12); margin-bottom:18px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .sidebar nav a{
+    display:flex; align-items:center; gap:10px; padding:11px 24px; font-size:14px; font-weight:500;
+    color:rgba(255,255,255,.65); border-left:3px solid transparent; transition:all .15s;
+  }
+  .sidebar nav a.active{
+    color:var(--white); background:rgba(255,255,255,.08); border-left-color:var(--clay);
+  }
+  .sidebar nav a:hover{ color:var(--white); background:rgba(255,255,255,.04); }
+
+  .sidebar-foot{
+    margin-top:auto; padding:20px 24px; border-top:1px solid rgba(255,255,255,.12);
+  }
+  .sidebar-link-btn{
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    background:rgba(255,255,255,0.12); color:#fff; padding:10px; border-radius:4px;
+    font-size:13px; font-weight:600; text-align:center; transition:background .15s;
+  }
+  .sidebar-link-btn:hover{ background:var(--clay); }
+
+  .main{ flex:1; min-width:0; }
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 32px; border-bottom:1px solid var(--line); background:#fff;
+  }
+  .topbar h1{ font-size:19px; font-weight:700; margin:0; }
+  .topbar-actions{ display:flex; align-items:center; gap:16px; }
+  .sync-badge{
+    display:inline-flex; align-items:center; gap:6px; background:#e8f5e9; color:#2e7d32;
+    padding:4px 10px; border-radius:12px; font-size:12px; font-weight:600;
+  }
+  .sync-dot{ width:8px; height:8px; border-radius:50%; background:#2e7d32; animation:pulse 1.5s infinite; }
+  @keyframes pulse{ 0%{opacity:1;} 50%{opacity:0.3;} 100%{opacity:1;} }
+  .admin-user{ font-size:13.5px; color:var(--ink-soft); }
+  .content{ padding:28px 32px 60px; }
+
+  /* ---------- Summary cards ---------- */
+  .summary-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px; }
+  @media (max-width:980px){ .summary-row{grid-template-columns:repeat(2,1fr);} }
+  .summary-card{
+    border:1px solid var(--line); padding:18px 20px; background:var(--white); border-radius:0;
+    transition:none; box-shadow:none;
+  }
+  .summary-card:hover{ box-shadow:none; }
+  .summary-card .label{ font-size:13px; color:var(--ink-soft); margin-bottom:8px; }
+  .summary-card .value{ font-size:24px; font-weight:700; }
+  .summary-card .value.accent{ color:var(--clay); }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar{
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    margin-bottom:16px; flex-wrap:wrap;
+  }
+  .filter-group{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .filter-tab{
+    padding:8px 16px; border:1px solid var(--line); font-size:13.5px; font-weight:500;
+    color:var(--ink-soft); cursor:pointer; background:var(--white); border-radius:4px;
+    transition:all .15s;
+  }
+  .filter-tab.active{ background:var(--forest); border-color:var(--forest); color:var(--white); font-weight:600; }
+  .search-box{
+    display:flex; align-items:center; border:1px solid var(--line); padding:8px 12px; gap:8px;
+    min-width:240px; background:#fff; border-radius:0;
+  }
+  .search-box input{
+    border:none; outline:none; font-family:inherit; font-size:13.5px; width:100%; background:transparent;
+  }
+  .search-box svg{ flex-shrink:0; opacity:.5; }
+
+  .date-range{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink-soft); }
+  .date-range input{
+    border:1px solid var(--line); padding:7px 10px; font-family:inherit; font-size:13px; background:var(--white); border-radius:4px;
+  }
+
+  /* Batch Actions Bar */
+  .batch-bar{
+    display:none; align-items:center; justify-content:space-between; background:var(--base-warm, #ECEFE0);
+    padding:10px 18px; border-radius:0; margin-bottom:14px; border:1px solid var(--line);
+  }
+  .batch-bar.show{ display:flex; }
+  .batch-actions{ display:flex; gap:8px; align-items:center; }
+  .batch-btn{
+    padding:6px 12px; background:#fff; border:1px solid var(--line); border-radius:4px;
+    font-size:12.5px; font-weight:600; color:var(--forest); transition:background .15s;
+  }
+  .batch-btn:hover{ background:var(--forest); color:#fff; }
+
+  /* Quick Test Add Button */
+  .btn-test-order{
+    background:var(--clay); color:#fff; border:none; padding:8px 14px; border-radius:4px;
+    font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:6px;
+    transition:background .15s;
+  }
+  .btn-test-order:hover{ background:#9c4324; }
+
+  /* ---------- Table ---------- */
+  .table-wrap{ border:1px solid var(--line); overflow-x:auto; border-radius:0; background:#fff; }
+  table{ width:100%; border-collapse:collapse; min-width:960px; }
+  thead th{
+    text-align:left; font-size:12.5px; font-weight:600; color:var(--ink-soft);
+    padding:12px 16px; background:var(--bg-soft); border-bottom:1px solid var(--line);
+    white-space:nowrap;
+  }
+  tbody td{
+    padding:14px 16px; border-bottom:1px solid var(--line); font-size:13.5px; vertical-align:middle;
+  }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr{ cursor:pointer; transition:background .15s; }
+  tbody tr:hover{ background:var(--bg-soft); }
+  tbody tr.new-order-highlight{ background:#f1f8e9; }
+
+  .order-no{ font-weight:700; color:var(--forest); }
+  .order-date{ color:var(--ink-soft); font-size:12.5px; margin-top:2px; }
+  .buyer-name{ font-weight:600; }
+  .buyer-id{ color:var(--ink-soft); font-size:12.5px; }
+  .item-name{ max-width:240px; font-weight:500; }
+  .item-more{ color:var(--ink-soft); font-size:12px; font-weight:normal; }
+  .amount{ font-weight:700; text-align:right; }
+
+  .status-badge{
+    display:inline-flex; align-items:center; gap:6px; padding:5px 11px; font-size:12.5px; font-weight:600; border-radius:0;
+  }
+  .status-pending{ background:var(--amber-soft); color:var(--amber); }
+  .status-prep{ background:var(--blue-soft); color:var(--blue); }
+  .status-shipping{ background:#E6EEE0; color:var(--forest); }
+  .status-done{ background:#EFEFEA; color:#777A6B; }
+  .status-cancel{ background:var(--clay-soft); color:var(--clay); }
+
+  th.col-check, td.col-check{ width:40px; text-align:center; }
+  input[type=checkbox]{ accent-color:var(--forest); width:15px; height:15px; cursor:pointer; }
+
+  /* Empty state */
+  .table-empty{ text-align:center; padding:60px 0; color:var(--ink-soft); font-size:14.5px; }
+
+  /* ---------- Pagination ---------- */
+  .pagination{ display:flex; justify-content:center; gap:6px; margin-top:24px; }
+  .page-btn{
+    width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+    border:1px solid var(--line); font-size:13px; cursor:pointer; color:var(--ink-soft); border-radius:4px;
+    background:#fff;
+  }
+  .page-btn.active{ background:var(--forest); color:var(--white); border-color:var(--forest); font-weight:700; }
+
+  /* ---------- Detail drawer ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(23,42,28,.4); display:none; z-index:100;
+    backdrop-filter:blur(2px);
+  }
+  .overlay.open{ display:block; }
+  .drawer{
+    position:fixed; top:0; right:0; width:440px; max-width:92vw; height:100vh; background:var(--white);
+    border-left:1px solid var(--line); z-index:101; transform:translateX(100%); transition:transform .25s ease;
+    display:flex; flex-direction:column; box-shadow:none;
+  }
+  .drawer.open{ transform:translateX(0); }
+  .drawer-head{
+    padding:22px 24px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:flex-start;
+  }
+  .drawer-head h2{ font-size:18px; font-weight:700; margin:0 0 4px; color:var(--forest); }
+  .drawer-head .sub{ font-size:12.5px; color:var(--ink-soft); }
+  .drawer-close{ cursor:pointer; font-size:22px; color:var(--ink-soft); background:none; border:none; padding:0; line-height:1; }
+  .drawer-body{ padding:22px 24px; overflow-y:auto; flex:1; }
+  .drawer-section{ margin-bottom:26px; }
+  .drawer-section h3{ font-size:13.5px; font-weight:700; margin:0 0 12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.5px; }
+  .drawer-row{ display:flex; justify-content:space-between; font-size:13.5px; padding:6px 0; }
+  .drawer-row span:first-child{ color:var(--ink-soft); }
+  .drawer-item{ display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); align-items:center; }
+  .drawer-item:last-child{ border-bottom:none; }
+  .drawer-item img{ width:56px; height:56px; object-fit:cover; border-radius:0; flex-shrink:0; }
+  .drawer-item .name{ font-size:13.5px; font-weight:600; margin-bottom:4px; }
+  .drawer-item .meta{ font-size:12.5px; color:var(--ink-soft); }
+  .drawer-foot{ padding:20px 24px; border-top:1px solid var(--line); background:#FAFAFA; }
+  .status-select{
+    width:100%; padding:11px 12px; border:1px solid var(--line); font-family:inherit; font-size:14px;
+    margin-bottom:12px; background:var(--white); border-radius:4px; outline:none; font-weight:600;
+  }
+  .btn-primary{
+    width:100%; padding:13px; background:var(--forest); color:var(--white); border:none; font-weight:700;
+    font-size:14px; cursor:pointer; font-family:inherit; border-radius:4px; transition:background .15s;
+  }
+  .btn-primary:hover{ background:var(--forest-deep); }
+
+  /* Toast */
+  #adminToast{
+    position:fixed; bottom:24px; right:24px; background:rgba(23,42,28,0.95); color:#fff;
+    padding:12px 20px; border-radius:0; font-size:13.5px; font-weight:500;
+    box-shadow:none; border:1px solid var(--forest); z-index:9999; display:none; animation:fadeIn .2s ease;
+  }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo">🌿 초록상점 관리자</div>
+    <nav>
+      <a href="#" onclick="showToast('대시보드 페이지 준비 중')">📊 대시보드</a>
+      <a href="#" class="active">📦 주문관리</a>
+      <a href="#" onclick="showToast('상품관리 페이지 준비 중')">🌱 상품관리</a>
+      <a href="#" onclick="showToast('고객관리 페이지 준비 중')">👥 고객관리</a>
+      <a href="#" onclick="showToast('기획전/배너 설정 준비 중')">🏷️ 기획전/배너</a>
+      <a href="#" onclick="showToast('정산관리 페이지 준비 중')">💰 정산관리</a>
+      <a href="#" onclick="showToast('환경설정 준비 중')">⚙️ 설정</a>
+    </nav>
+    <div class="sidebar-foot">
+      <a href="index.html" target="_blank" class="sidebar-link-btn">
+        🌿 쇼핑몰 열기 ↗
+      </a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex; align-items:center; gap:14px;">
+        <h1>주문관리</h1>
+        <div class="sync-badge">
+          <span class="sync-dot"></span>
+          <span>쇼핑몰 실시간 연동 중</span>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn-test-order" id="btnMakeSampleOrder">
+          ⚡ 새 주문 1건 시뮬레이션
+        </button>
+        <div class="admin-user">지영 매니저님</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- 실시간 통계 요약 카드 -->
+      <div class="summary-row">
+        <div class="summary-card">
+          <div class="label">오늘 신규 주문</div>
+          <div class="value" id="statTodayOrders">0건</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">결제완료 · 배송준비중</div>
+          <div class="value accent" id="statPendingPrep">0건</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">배송중</div>
+          <div class="value" id="statShipping">0건</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">총 주문 결제액</div>
+          <div class="value" id="statTotalRevenue">0원</div>
+        </div>
+      </div>
+
+      <!-- 상단 툴바 (탭, 날짜, 검색) -->
+      <div class="toolbar">
+        <div class="filter-group">
+          <div class="filter-tab active" data-status="all">전체 <span id="cntAll">0</span></div>
+          <div class="filter-tab" data-status="pending">결제완료 <span id="cntPending">0</span></div>
+          <div class="filter-tab" data-status="prep">배송준비중 <span id="cntPrep">0</span></div>
+          <div class="filter-tab" data-status="shipping">배송중 <span id="cntShipping">0</span></div>
+          <div class="filter-tab" data-status="done">배송완료 <span id="cntDone">0</span></div>
+          <div class="filter-tab" data-status="cancel">취소·환불 <span id="cntCancel">0</span></div>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <div class="date-range">
+            <input type="date" id="startDate" value="2026-09-01">
+            <span>~</span>
+            <input type="date" id="endDate" value="2026-09-30">
+          </div>
+          <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="orderSearchInput" placeholder="주문번호, 주문자, 상품 검색">
+          </div>
+        </div>
+      </div>
+
+      <!-- 선택 주문 일괄 처리 바 -->
+      <div class="batch-bar" id="batchBar">
+        <div style="font-size:13.5px; font-weight:600; color:var(--forest);">
+          선택한 <span id="selectedCount" style="color:var(--clay);">0</span>건의 주문:
+        </div>
+        <div class="batch-actions">
+          <button class="batch-btn" onclick="batchUpdateStatus('prep')">배송준비중으로 변경</button>
+          <button class="batch-btn" onclick="batchUpdateStatus('shipping')">배송중으로 변경</button>
+          <button class="batch-btn" onclick="batchUpdateStatus('done')">배송완료로 변경</button>
+        </div>
+      </div>
+
+      <!-- 주문 목록 테이블 -->
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" id="checkAll"></th>
+              <th>주문번호</th>
+              <th>주문자</th>
+              <th>상품</th>
+              <th>결제금액</th>
+              <th>결제수단</th>
+              <th>주문상태</th>
+              <th>배송지</th>
+            </tr>
+          </thead>
+          <tbody id="order-table-body">
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pagination">
+        <div class="page-btn">‹</div>
+        <div class="page-btn active">1</div>
+        <div class="page-btn" onclick="showToast('2페이지 데이터가 없습니다.')">2</div>
+        <div class="page-btn" onclick="showToast('3페이지 데이터가 없습니다.')">3</div>
+        <div class="page-btn">›</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- 상세 드로어 -->
+<div class="overlay" id="overlay"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div>
+      <h2 id="d-order-no">주문번호</h2>
+      <div class="sub" id="d-order-date">주문일시</div>
+    </div>
+    <button class="drawer-close" id="d-close">&times;</button>
+  </div>
+  <div class="drawer-body">
+    <div class="drawer-section">
+      <h3>주문자 정보</h3>
+      <div class="drawer-row"><span>이름</span><span id="d-buyer-name" style="font-weight:600;"></span></div>
+      <div class="drawer-row"><span>연락처</span><span id="d-buyer-phone"></span></div>
+      <div class="drawer-row"><span>이메일</span><span id="d-buyer-email"></span></div>
+    </div>
+    <div class="drawer-section">
+      <h3>배송 정보</h3>
+      <div class="drawer-row"><span>받는 사람</span><span id="d-ship-name" style="font-weight:600;"></span></div>
+      <div class="drawer-row"><span>주소</span><span id="d-ship-addr" style="max-width:240px; text-align:right;"></span></div>
+      <div class="drawer-row"><span>배송 메모</span><span id="d-ship-memo"></span></div>
+    </div>
+    <div class="drawer-section">
+      <h3>주문 상품</h3>
+      <div id="d-items"></div>
+    </div>
+    <div class="drawer-section">
+      <h3>결제 정보</h3>
+      <div class="drawer-row"><span>상품 금액</span><span id="d-pay-sub"></span></div>
+      <div class="drawer-row"><span>배송비</span><span id="d-pay-ship"></span></div>
+      <div class="drawer-row"><span>총 결제금액</span><span id="d-pay-total" style="font-weight:700; color:var(--forest); font-size:15px;"></span></div>
+      <div class="drawer-row"><span>결제수단</span><span id="d-pay-method" style="font-weight:600;"></span></div>
+    </div>
+  </div>
+  <div class="drawer-foot">
+    <select class="status-select" id="d-status-select">
+      <option value="pending">결제완료</option>
+      <option value="prep">배송준비중</option>
+      <option value="shipping">배송중</option>
+      <option value="done">배송완료</option>
+      <option value="cancel">취소·환불</option>
+    </select>
+    <button class="btn-primary" id="d-save">상태 변경 저장</button>
+  </div>
+</div>
+
+<div id="adminToast">알림 메시지</div>
+
+<script>
+/* ==========================================================================
+   상태 라벨 및 기본 샘플 데이터 정의
+   ========================================================================== */
+const STATUS_LABEL = {
+  pending:  { text:'결제완료', cls:'status-pending' },
+  prep:     { text:'배송준비중', cls:'status-prep' },
+  shipping: { text:'배송중', cls:'status-shipping' },
+  done:     { text:'배송완료', cls:'status-done' },
+  cancel:   { text:'취소·환불', cls:'status-cancel' },
+};
+
+const INITIAL_ORDERS = [
+  { no:'20260908-0182', date:'2026.09.08 14:22', buyerName:'김서연', buyerId:'seoyeon_k', phone:'010-2231-8845', email:'seoyeon_k@example.com',
+    items:[{name:'몬스테라 델리시오사 6호 (토분 포함)', qty:1, price:57800, img:'https://images.unsplash.com/photo-1520412099551-62b6bafeb5bb?q=80&w=200&auto=format&fit=crop'}],
+    itemsLabel:'몬스테라 델리시오사 6호', itemsMore:0,
+    shipName:'김서연', addr:'서울시 마포구 성지길 25, 302호', memo:'부재 시 경비실에 맡겨주세요',
+    subtotal:57800, shipFee:0, total:57800, method:'카카오페이', status:'pending' },
+  { no:'20260908-0181', date:'2026.09.08 11:05', buyerName:'박도윤', buyerId:'doyoon.p', phone:'010-4482-1190', email:'doyoon.p@example.com',
+    items:[
+      {name:'스투키 3연 세트', qty:1, price:34900, img:'https://images.unsplash.com/photo-1509937528035-ad76254b0356?q=80&w=200&auto=format&fit=crop'},
+      {name:'수제 유약 토분 3size 세트', qty:1, price:37800, img:'https://images.unsplash.com/photo-1485955900006-10f4d324d411?q=80&w=200&auto=format&fit=crop'}
+    ],
+    itemsLabel:'스투키 3연 세트 외', itemsMore:1,
+    shipName:'박도윤', addr:'경기도 성남시 분당구 판교로 235, 1204동 502호', memo:'-',
+    subtotal:72700, shipFee:3000, total:75700, method:'신용카드', status:'prep' },
+  { no:'20260907-0179', date:'2026.09.07 20:41', buyerName:'이하은', buyerId:'haeun_lee', phone:'010-9981-3320', email:'haeun_lee@example.com',
+    items:[{name:'떡갈고무나무 대형 1.2m', qty:1, price:102400, img:'https://images.unsplash.com/photo-1463320726281-696a485928c7?q=80&w=200&auto=format&fit=crop'}],
+    itemsLabel:'떡갈고무나무 대형 1.2m', itemsMore:0,
+    shipName:'이하은', addr:'인천시 연수구 송도과학로 12, 원더빌 801호', memo:'문 앞에 놓아주세요',
+    subtotal:102400, shipFee:0, total:102400, method:'무통장입금', status:'shipping' },
+  { no:'20260907-0176', date:'2026.09.07 15:12', buyerName:'최윤서', buyerId:'yunseo_c', phone:'010-1123-7789', email:'yunseo_c@example.com',
+    items:[{name:'산세베리아 실린드리카', qty:2, price:28000, img:'https://images.unsplash.com/photo-1459156212016-c812468e2115?q=80&w=200&auto=format&fit=crop'}],
+    itemsLabel:'산세베리아 실린드리카', itemsMore:0,
+    shipName:'최윤서', addr:'부산시 해운대구 센텀중앙로 90, 센텀타워 1503호', memo:'-',
+    subtotal:56000, shipFee:3000, total:59000, method:'카카오페이', status:'done' },
+  { no:'20260906-0171', date:'2026.09.06 09:37', buyerName:'정민준', buyerId:'minjun_j', phone:'010-6620-4471', email:'minjun_j@example.com',
+    items:[{name:'허브 씨앗 6종 키트', qty:1, price:19700, img:'https://images.unsplash.com/photo-1591958911259-bee2173bdccc?q=80&w=200&auto=format&fit=crop'}],
+    itemsLabel:'허브 씨앗 6종 키트', itemsMore:0,
+    shipName:'정민준', addr:'대구시 수성구 동대구로 15, 105호', memo:'배송 전 연락 부탁드려요',
+    subtotal:19700, shipFee:3000, total:22700, method:'신용카드', status:'cancel' },
+  { no:'20260906-0168', date:'2026.09.06 08:02', buyerName:'한소율', buyerId:'soyul_han', phone:'010-3345-9902', email:'soyul_han@example.com',
+    items:[{name:'금전수 4호 (개업선물 추천)', qty:1, price:39600, img:'https://images.unsplash.com/photo-1509937528035-ad76254b0356?q=80&w=200&auto=format&fit=crop'}],
+    itemsLabel:'금전수 4호', itemsMore:0,
+    shipName:'한소율', addr:'서울시 강남구 테헤란로 401, 아이파크 2201호', memo:'-',
+    subtotal:39600, shipFee:0, total:39600, method:'카카오페이', status:'shipping' },
+  { no:'20260905-0159', date:'2026.09.05 19:26', buyerName:'오지훈', buyerId:'jihoon_oh', phone:'010-8871-2245', email:'jihoon_oh@example.com',
+    items:[{name:'테이블야자 소형 2개입', qty:1, price:22000, img:'https://images.unsplash.com/photo-1463154545680-d59320fd685d?q=80&w=200&auto=format&fit=crop'}],
+    itemsLabel:'테이블야자 소형 2개입', itemsMore:0,
+    shipName:'오지훈', addr:'광주시 서구 상무중앙로 58, 302호', memo:'-',
+    subtotal:22000, shipFee:3000, total:25000, method:'무통장입금', status:'prep' },
+  { no:'20260905-0154', date:'2026.09.05 13:50', buyerName:'강서아', buyerId:'seoa_kang', phone:'010-5567-3312', email:'seoa_kang@example.com',
+    items:[{name:'가드닝 무드등 원목형', qty:1, price:49000, img:'https://images.unsplash.com/photo-1416339306562-c98a0c9f6b7e?q=80&w=200&auto=format&fit=crop'}],
+    itemsLabel:'가드닝 무드등 원목형', itemsMore:0,
+    shipName:'강서아', addr:'서울시 마포구 월드컵북로 60, 상암빌딩 401호', memo:'경비실 부재중, 문 앞 부탁드려요',
+    subtotal:49000, shipFee:0, total:49000, method:'신용카드', status:'done' },
+];
+
+/* ==========================================================================
+   localStorage 영속성 관리
+   ========================================================================== */
+function loadOrders() {
+  const saved = localStorage.getItem('greenstore_orders');
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch(e) {
+      console.error(e);
+    }
+  }
+  // 초기 데이터 저장
+  localStorage.setItem('greenstore_orders', JSON.stringify(INITIAL_ORDERS));
+  return INITIAL_ORDERS;
+}
+
+function saveOrders(data) {
+  localStorage.setItem('greenstore_orders', JSON.stringify(data));
+}
+
+let orders = loadOrders();
+let selectedOrderNos = new Set();
+
+/* ==========================================================================
+   통계 및 탭 카운터 실시간 계산
+   ========================================================================== */
+function updateSummaryAndCounters() {
+  // 오늘 주문 (2026.09.08 기준)
+  const today = '2026.09.08';
+  const todayOrders = orders.filter(o => o.date && o.date.startsWith(today));
+  document.getElementById('statTodayOrders').textContent = `${todayOrders.length}건`;
+
+  // 결제완료 + 배송준비중
+  const pendingPrep = orders.filter(o => o.status === 'pending' || o.status === 'prep');
+  document.getElementById('statPendingPrep').textContent = `${pendingPrep.length}건`;
+
+  // 배송중
+  const shipping = orders.filter(o => o.status === 'shipping');
+  document.getElementById('statShipping').textContent = `${shipping.length}건`;
+
+  // 총 매출 (취소 제외)
+  const revenue = orders.filter(o => o.status !== 'cancel').reduce((sum, o) => sum + (o.total || 0), 0);
+  document.getElementById('statTotalRevenue').textContent = `${revenue.toLocaleString()}원`;
+
+  // 탭 뱃지 수량
+  document.getElementById('cntAll').textContent = orders.length;
+  document.getElementById('cntPending').textContent = orders.filter(o => o.status === 'pending').length;
+  document.getElementById('cntPrep').textContent = orders.filter(o => o.status === 'prep').length;
+  document.getElementById('cntShipping').textContent = orders.filter(o => o.status === 'shipping').length;
+  document.getElementById('cntDone').textContent = orders.filter(o => o.status === 'done').length;
+  document.getElementById('cntCancel').textContent = orders.filter(o => o.status === 'cancel').length;
+}
+
+/* ==========================================================================
+   테이블 렌더링 & 필터링 로직
+   ========================================================================== */
+const tbody = document.getElementById('order-table-body');
+
+function getFilteredOrders() {
+  const activeTab = document.querySelector('.filter-tab.active').dataset.status;
+  const q = document.getElementById('orderSearchInput').value.trim().toLowerCase();
+  const startVal = document.getElementById('startDate').value; // '2026-09-01'
+  const endVal = document.getElementById('endDate').value;     // '2026-09-30'
+
+  return orders.filter(o => {
+    // 1. 상태 필터
+    if (activeTab !== 'all' && o.status !== activeTab) return false;
+
+    // 2. 검색어 필터 (주문번호, 주문자명, 상품명, 배송지)
+    if (q) {
+      const matchNo = o.no.toLowerCase().includes(q);
+      const matchName = o.buyerName.toLowerCase().includes(q);
+      const matchItem = (o.itemsLabel || '').toLowerCase().includes(q);
+      const matchAddr = (o.addr || '').toLowerCase().includes(q);
+      if (!matchNo && !matchName && !matchItem && !matchAddr) return false;
+    }
+
+    // 3. 날짜 필터
+    if (o.date) {
+      const oDate = o.date.split(' ')[0].replace(/\./g, '-'); // '2026-09-08'
+      if (startVal && oDate < startVal) return false;
+      if (endVal && oDate > endVal) return false;
+    }
+
+    return true;
+  });
+}
+
+function renderRows() {
+  const list = getFilteredOrders();
+  updateSummaryAndCounters();
+
+  if (list.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" class="table-empty">
+          일치하는 주문 내역이 없습니다.
+        </td>
+      </tr>
+    `;
+    updateBatchBar();
+    return;
+  }
+
+  tbody.innerHTML = list.map(o => {
+    const isChecked = selectedOrderNos.has(o.no) ? 'checked' : '';
+    return `
+      <tr data-no="${o.no}">
+        <td class="col-check" onclick="event.stopPropagation()">
+          <input type="checkbox" data-no="${o.no}" ${isChecked} onchange="toggleSelectOrder('${o.no}', this.checked)">
+        </td>
+        <td>
+          <div class="order-no">${o.no}</div>
+          <div class="order-date">${o.date}</div>
+        </td>
+        <td>
+          <div class="buyer-name">${o.buyerName}</div>
+          <div class="buyer-id">${o.buyerId || '-'}</div>
+        </td>
+        <td class="item-name">
+          ${o.itemsLabel}${o.itemsMore > 0 ? ` <span class="item-more">외 ${o.itemsMore}건</span>` : ''}
+        </td>
+        <td class="amount">${o.total.toLocaleString()}원</td>
+        <td>${o.method}</td>
+        <td><span class="status-badge ${STATUS_LABEL[o.status].cls}">${STATUS_LABEL[o.status].text}</span></td>
+        <td>${o.addr ? o.addr.split(',')[0] : '-'}</td>
+      </tr>
+    `;
+  }).join('');
+
+  tbody.querySelectorAll('tr[data-no]').forEach(tr => {
+    tr.addEventListener('click', () => openDrawer(tr.dataset.no));
+  });
+
+  updateBatchBar();
+}
+
+/* ==========================================================================
+   체크박스 및 일괄 상태 변경
+   ========================================================================== */
+function toggleSelectOrder(no, isChecked) {
+  if (isChecked) selectedOrderNos.add(no);
+  else selectedOrderNos.delete(no);
+  updateBatchBar();
+}
+
+document.getElementById('checkAll').addEventListener('change', (e) => {
+  const checked = e.target.checked;
+  const list = getFilteredOrders();
+  if (checked) {
+    list.forEach(o => selectedOrderNos.add(o.no));
+  } else {
+    selectedOrderNos.clear();
+  }
+  renderRows();
+});
+
+function updateBatchBar() {
+  const bar = document.getElementById('batchBar');
+  const countSpan = document.getElementById('selectedCount');
+  if (selectedOrderNos.size > 0) {
+    bar.classList.add('show');
+    countSpan.textContent = selectedOrderNos.size;
+  } else {
+    bar.classList.remove('show');
+    document.getElementById('checkAll').checked = false;
+  }
+}
+
+function batchUpdateStatus(newStatus) {
+  if (selectedOrderNos.size === 0) return;
+  orders.forEach(o => {
+    if (selectedOrderNos.has(o.no)) {
+      o.status = newStatus;
+    }
+  });
+  saveOrders(orders);
+  showToast(`선택된 ${selectedOrderNos.size}건이 [${STATUS_LABEL[newStatus].text}](으)로 일괄 변경되었습니다.`);
+  selectedOrderNos.clear();
+  renderRows();
+}
+
+/* ==========================================================================
+   이벤트 리스너 (탭, 검색, 날짜)
+   ========================================================================== */
+document.querySelectorAll('.filter-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    renderRows();
+  });
+});
+
+document.getElementById('orderSearchInput').addEventListener('input', () => {
+  renderRows();
+});
+
+document.getElementById('startDate').addEventListener('change', renderRows);
+document.getElementById('endDate').addEventListener('change', renderRows);
+
+/* ==========================================================================
+   상세 드로어(Drawer)
+   ========================================================================== */
+const overlay = document.getElementById('overlay');
+const drawer = document.getElementById('drawer');
+
+function openDrawer(no) {
+  const o = orders.find(x => x.no === no);
+  if (!o) return;
+
+  document.getElementById('d-order-no').textContent = o.no;
+  document.getElementById('d-order-date').textContent = o.date;
+  document.getElementById('d-buyer-name').textContent = o.buyerName;
+  document.getElementById('d-buyer-phone').textContent = o.phone || '-';
+  document.getElementById('d-buyer-email').textContent = o.email || '-';
+  document.getElementById('d-ship-name').textContent = o.shipName || o.buyerName;
+  document.getElementById('d-ship-addr').textContent = o.addr || '-';
+  document.getElementById('d-ship-memo').textContent = o.memo || '-';
+
+  document.getElementById('d-items').innerHTML = o.items.map(it => `
+    <div class="drawer-item">
+      <img src="${it.img || 'https://images.unsplash.com/photo-1520412099551-62b6bafeb5bb?q=80&w=200&auto=format&fit=crop'}" alt="${it.name}">
+      <div>
+        <div class="name">${it.name}</div>
+        <div class="meta">${it.qty}개 · ${it.price.toLocaleString()}원</div>
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('d-pay-sub').textContent = o.subtotal.toLocaleString() + '원';
+  document.getElementById('d-pay-ship').textContent = o.shipFee.toLocaleString() + '원';
+  document.getElementById('d-pay-total').textContent = o.total.toLocaleString() + '원';
+  document.getElementById('d-pay-method').textContent = o.method;
+  document.getElementById('d-status-select').value = o.status;
+
+  overlay.classList.add('open');
+  drawer.classList.add('open');
+}
+
+function closeDrawer() {
+  overlay.classList.remove('open');
+  drawer.classList.remove('open');
+}
+overlay.addEventListener('click', closeDrawer);
+document.getElementById('d-close').addEventListener('click', closeDrawer);
+
+document.getElementById('d-save').addEventListener('click', () => {
+  const no = document.getElementById('d-order-no').textContent;
+  const newStatus = document.getElementById('d-status-select').value;
+  const o = orders.find(x => x.no === no);
+  if (o) {
+    o.status = newStatus;
+    saveOrders(orders);
+    showToast(`주문 [${no}] 상태가 [${STATUS_LABEL[newStatus].text}](으)로 저장되었습니다.`);
+  }
+  renderRows();
+  closeDrawer();
+});
+
+/* ==========================================================================
+   실시간 쇼핑몰 주문 연동 및 시뮬레이션
+   ========================================================================== */
+// 다른 브라우저 탭(쇼핑몰 index.html)에서 주문이 들어오면 실시간 감지!
+window.addEventListener('storage', (e) => {
+  if (e.key === 'greenstore_orders') {
+    orders = loadOrders();
+    renderRows();
+    showToast('📢 쇼핑몰에서 새로운 주문이 접수되어 목록이 자동 갱신되었습니다!');
+  }
+});
+
+// 관리자 화면에서 즉시 테스트 주문 생성 버튼
+document.getElementById('btnMakeSampleOrder').addEventListener('click', () => {
+  const now = new Date();
+  const dateStr = `2026.09.08 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const randomNo = '20260908-' + String(Math.floor(1000 + Math.random() * 9000));
+  
+  const sampleNewOrder = {
+    no: randomNo,
+    date: dateStr,
+    buyerName: '테스트고객_' + Math.floor(Math.random() * 90 + 10),
+    buyerId: 'user_' + Math.floor(Math.random() * 900),
+    phone: '010-7788-9900',
+    email: 'client@example.com',
+    items: [
+      { name: '몬스테라 델리시오사 6호 (토분 포함)', qty: 1, price: 57800, img: 'https://images.unsplash.com/photo-1520412099551-62b6bafeb5bb?q=80&w=200&auto=format&fit=crop' },
+      { name: '가드닝 무드등 원목형', qty: 1, price: 49000, img: 'https://images.unsplash.com/photo-1416339306562-c98a0c9f6b7e?q=80&w=200&auto=format&fit=crop' }
+    ],
+    itemsLabel: '몬스테라 델리시오사 6호 외',
+    itemsMore: 1,
+    shipName: '테스트고객',
+    addr: '서울시 마포구 월드컵북로 120, 초록빌딩 501호',
+    memo: '빠른 배송 부탁드립니다',
+    subtotal: 106800,
+    shipFee: 0,
+    total: 106800,
+    method: '네이버페이',
+    status: 'pending'
+  };
+
+  orders.unshift(sampleNewOrder);
+  saveOrders(orders);
+  renderRows();
+  showToast(`⚡ 신규 주문 [${randomNo}]이 실시간 접수되었습니다!`);
+});
+
+/* ==========================================================================
+   토스트 알림
+   ========================================================================== */
+let toastTimer = null;
+function showToast(msg) {
+  const toast = document.getElementById('adminToast');
+  toast.textContent = msg;
+  toast.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.style.display = 'none';
+  }, 2500);
+}
+
+// 초기 로드
+window.addEventListener('DOMContentLoaded', () => {
+  renderRows();
+});
+</script>
+
+</body>
+</html>
