@@ -51,7 +51,15 @@
   /* 중앙 로고 */
   .main-logo{ text-align:center; cursor:pointer; display:block; }
   .main-logo .logo-text{ font-size:24px; font-weight:800; color:var(--forest); letter-spacing:-1px; display:block; }
-
+  .main-logo .logo-sub{
+  display:block;            /* 국문 아래로 내려감 */
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:3px;
+  padding-left:3px;         /* letter-spacing 끝 여백만큼 보정해서 가운데 정렬 유지 */
+  color:#86817e;
+  margin-top:2px;
+  }
   .main-bar-right{ display:flex; align-items:center; gap:8px; justify-content:flex-end; }
 
   /* 카테고리 네비 바 (border 없음) */
